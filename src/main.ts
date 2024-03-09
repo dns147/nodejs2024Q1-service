@@ -8,28 +8,17 @@ import { serve, setup } from 'swagger-ui-express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port = process.env.PORT;
+  const port = process.env.PORT || 8000;
 
-  //const config = new DocumentBuilder()
-    // .setTitle('Service')
-    // .setDescription('REST Service')
-    // .setVersion('1.0')
-    // .addTag('Service')
-    // .build();
-
-  //const document = SwaggerModule.createDocument(app, config);
-  
   const file = readFileSync('./doc/api.yaml', 'utf8');
   const swaggerDocument = parse(file);
 
-  //SwaggerModule.setup('api', app, document);
-
-  app.use('/api-docs', serve, setup(swaggerDocument));
+  app.use('/api', serve, setup(swaggerDocument));
 
   await app.listen(port);
 
   console.log(`Server is listening http://localhost:${port}`);
-  console.log(`You can use swagger http://localhost:${port}/api-docs`);
+  console.log(`You can use swagger http://localhost:${port}/api`);
 }
 
 bootstrap();
