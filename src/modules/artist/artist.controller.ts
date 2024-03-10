@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -26,8 +27,10 @@ export class ArtistController {
   }
 
   @Post()
-  @HttpCode(201)
-  async createArtist(@Body() createArtistDto: CreateArtistDto): Promise<ArtistDto> {
+  @HttpCode(HttpStatus.CREATED)
+  async createArtist(
+    @Body() createArtistDto: CreateArtistDto,
+  ): Promise<ArtistDto> {
     return await this.artistService.createArtist(createArtistDto);
   }
 
@@ -35,12 +38,12 @@ export class ArtistController {
   async updateArtist(
     @Param('id') id: string,
     @Body() updateArtistDto: UpdateArtistDto,
-  ) {
-    await this.artistService.updateArtist(id, updateArtistDto);
+  ): Promise<ArtistDto> {
+    return await this.artistService.updateArtist(id, updateArtistDto);
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteArtist(@Param('id') id: string) {
     await this.artistService.deleteArtist(id);
   }

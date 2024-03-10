@@ -68,7 +68,10 @@ export class ArtistService {
     return newArtist;
   }
 
-  async updateArtist(artistId: string, updateArtistDto: UpdateArtistDto) {
+  async updateArtist(
+    artistId: string,
+    updateArtistDto: UpdateArtistDto,
+  ): Promise<ArtistDto> {
     if (!uuidValidate(artistId)) {
       throw new HttpException(
         'artistId is invalid (not uuid)',
@@ -76,35 +79,41 @@ export class ArtistService {
       );
     }
 
+    const storage = await this.storage.getStorage();
+    const artistById = storage.artists.find(({ id }) => id === artistId);
+
+    if (!artistById) {
+      throw new HttpException("artist doesn't exist", HttpStatus.NOT_FOUND);
+    }
+
     const { name, grammy } = updateArtistDto;
 
-    if (
-      !name ||
-      !grammy ||
-      typeof name !== 'string' ||
-      typeof grammy !== 'boolean'
-    ) {
+    if (!name || grammy === undefined || typeof name !== 'string') {
       throw new HttpException(
         "record with artistId doesn't exist",
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const storage = await this.storage.getStorage();
+    let updatedArtists: ArtistDto;
 
     const artists = storage.artists.map((artist) => {
       if (artist.id === artistId) {
-        return {
+        updatedArtists = {
           ...artist,
           name: name,
           grammy: grammy,
         };
+
+        return updatedArtists;
       }
 
       return artist;
     });
 
     await this.storage.updateStorage({ ...storage, artists });
+
+    return updatedArtists;
   }
 
   async deleteArtist(artistId: string) {

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -17,36 +18,30 @@ export class AlbumController {
 
   @Get()
   async getAllAlbums(): Promise<AlbumDto[]> {
-    const albums = await this.albumService.getAllAlbums();
-
-    return albums;
+    return await this.albumService.getAllAlbums();
   }
 
   @Get(':id')
   async getAlbumById(@Param('id') id: string): Promise<AlbumDto | undefined> {
-    const album = await this.albumService.getAlbumById(id);
-
-    return album;
+    return await this.albumService.getAlbumById(id);
   }
 
   @Post()
-  @HttpCode(201)
+  @HttpCode(HttpStatus.CREATED)
   async createAlbum(@Body() createAlbumDto: CreateAlbumDto): Promise<AlbumDto> {
-    const album = await this.albumService.createAlbum(createAlbumDto);
-
-    return album;
+    return await this.albumService.createAlbum(createAlbumDto);
   }
 
   @Put(':id')
   async updateAlbum(
     @Param('id') id: string,
     @Body() updateAlbumDto: UpdateAlbumDto,
-  ) {
-    await this.albumService.updateAlbum(id, updateAlbumDto);
+  ): Promise<AlbumDto> {
+    return await this.albumService.updateAlbum(id, updateAlbumDto);
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAlbum(@Param('id') id: string) {
     await this.albumService.deleteAlbum(id);
   }

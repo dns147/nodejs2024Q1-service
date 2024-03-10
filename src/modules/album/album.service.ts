@@ -67,12 +67,22 @@ export class AlbumService {
     return newAlbum;
   }
 
-  async updateAlbum(albumId: string, updateAlbumDto: UpdateAlbumDto) {
+  async updateAlbum(
+    albumId: string,
+    updateAlbumDto: UpdateAlbumDto,
+  ): Promise<AlbumDto> {
     if (!uuidValidate(albumId)) {
       throw new HttpException(
         'albumId is invalid (not uuid)',
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    const storage = await this.storage.getStorage();
+    const albumById = storage.albums.find(({ id }) => id === albumId);
+
+    if (!albumById) {
+      throw new HttpException("album doesn't exist", HttpStatus.NOT_FOUND);
     }
 
     const { name, year, artistId } = updateAlbumDto;
@@ -89,22 +99,26 @@ export class AlbumService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    let updatedAlbum: AlbumDto;
 
     const albums = storage.albums.map((album) => {
       if (album.id === albumId) {
-        return {
+        updatedAlbum = {
           ...album,
           name: name,
           year: year,
           artistId: artistId,
         };
+
+        return updatedAlbum;
       }
 
       return album;
     });
 
     await this.storage.updateStorage({ ...storage, albums });
+
+    return updatedAlbum;
   }
 
   async deleteAlbum(albumId: string) {
