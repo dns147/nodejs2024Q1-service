@@ -130,4 +130,18 @@ export class AlbumService {
 
     await this.trackService.deleteAlbumFromTracks(albumId);
   }
+
+  async deleteArtistFromAlbums(artistId: string) {
+    const storage = await this.storage.getStorage();
+
+    const albums = storage.albums.map((album) => {
+      if (album.artistId === artistId) {
+        album.artistId = null;
+      }
+
+      return album;
+    });
+
+    await this.storage.updateStorage({ ...storage, albums });
+  }
 }
