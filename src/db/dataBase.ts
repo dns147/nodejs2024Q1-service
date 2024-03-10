@@ -1,16 +1,19 @@
 import { MEMORY_STORAGE } from 'src/helpers/consts';
+import { AlbumDto } from 'src/modules/album/dto/album.dto';
 import { TrackDto } from 'src/modules/track/dto/track.dto';
 import { UserDto } from 'src/modules/user/dto/user.dto';
 
 export interface IStorage {
   users: UserDto[];
   tracks: TrackDto[];
+  albums: AlbumDto[];
 }
 
 export class DBStorage {
   storage: IStorage = {
     users: [],
     tracks: [],
+    albums: [],
   };
 
   async getStorage(): Promise<IStorage> {
