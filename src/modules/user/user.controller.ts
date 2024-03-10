@@ -1,6 +1,19 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto, UpdatePasswordDto, UserResponseDto } from './dto/user.dto';
+import {
+  CreateUserDto,
+  UpdatePasswordDto,
+  UserResponseDto,
+} from './dto/user.dto';
 
 @Controller('user')
 export class UserController {
@@ -12,7 +25,13 @@ export class UserController {
 
     users.map((user) => {
       const { id, login, version, createdAt, updatedAt } = user;
-      const userResponse: UserResponseDto = { id, login, version, createdAt, updatedAt };
+      const userResponse: UserResponseDto = {
+        id,
+        login,
+        version,
+        createdAt,
+        updatedAt,
+      };
 
       return userResponse;
     });
@@ -21,7 +40,9 @@ export class UserController {
   }
 
   @Get(':id')
-  async getUserById(@Param('id') id: string): Promise<UserResponseDto | undefined> {
+  async getUserById(
+    @Param('id') id: string,
+  ): Promise<UserResponseDto | undefined> {
     const user = await this.userService.getUserById(id);
 
     return this.userService.getResponseUser(user);
@@ -36,7 +57,10 @@ export class UserController {
   }
 
   @Put(':id')
-  async updatePassword(@Param('id') id: string, @Body() updatePasswordDto: UpdatePasswordDto): Promise<UserResponseDto> {
+  async updatePassword(
+    @Param('id') id: string,
+    @Body() updatePasswordDto: UpdatePasswordDto,
+  ): Promise<UserResponseDto> {
     await this.userService.updatePassword(id, updatePasswordDto);
 
     const user = await this.userService.getUserById(id);

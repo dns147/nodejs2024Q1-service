@@ -7,5 +7,4 @@ import { connectionStorage } from 'src/db/dataBase';
   controllers: [UserController],
   providers: [UserService, connectionStorage],
 })
-
 export class UserModule {}

@@ -1,5 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { CreateUserDto, UpdatePasswordDto, UserDto, UserResponseDto } from './dto/user.dto';
+import {
+  CreateUserDto,
+  UpdatePasswordDto,
+  UserDto,
+  UserResponseDto,
+} from './dto/user.dto';
 import { DBStorage } from 'src/db/dataBase';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
 import { getTimestamp } from 'src/helpers/utils';
@@ -12,8 +17,16 @@ export class UserService {
   async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
     const { login, password } = createUserDto;
 
-    if (!login || !password || typeof login !== 'string' || typeof password !== 'string') {
-      throw new HttpException('invalid user data', HttpStatus.BAD_REQUEST);
+    if (
+      !login ||
+      !password ||
+      typeof login !== 'string' ||
+      typeof password !== 'string'
+    ) {
+      throw new HttpException(
+        "body doesn't contain required fields",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const timestamp = getTimestamp();
@@ -30,7 +43,7 @@ export class UserService {
     const users: UserDto[] = storage.users;
     users.push(newUser);
 
-    await this.storage.updateStorage(users);
+    await this.storage.updateStorage({ ...storage, users });
 
     return newUser;
   }
@@ -43,7 +56,10 @@ export class UserService {
 
   async getUserById(userId: string): Promise<UserDto | undefined> {
     if (!uuidValidate(userId)) {
-      throw new HttpException('userId is invalid (not uuid)', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'userId is invalid (not uuid)',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const storage = await this.storage.getStorage();
@@ -58,13 +74,24 @@ export class UserService {
 
   async updatePassword(userId: string, updatePasswordDto: UpdatePasswordDto) {
     if (!uuidValidate(userId)) {
-      throw new HttpException('userId is invalid (not uuid)', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'userId is invalid (not uuid)',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const { oldPassword, newPassword } = updatePasswordDto;
 
-    if ( !oldPassword || !newPassword || typeof oldPassword !== 'string' || typeof newPassword !== 'string') {
-      throw new HttpException('invalid password data', HttpStatus.BAD_REQUEST);
+    if (
+      !oldPassword ||
+      !newPassword ||
+      typeof oldPassword !== 'string' ||
+      typeof newPassword !== 'string'
+    ) {
+      throw new HttpException(
+        "record with userId doesn't exist",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const user = await this.getUserById(userId);
@@ -82,29 +109,35 @@ export class UserService {
           password: newPassword,
           updatedAt: getTimestamp(),
           version: user.version + 1,
-        }
+        };
       } else {
         return user;
       }
     });
 
-    await this.storage.updateStorage(users);
+    await this.storage.updateStorage({ ...storage, users });
   }
 
   async deleteUser(userId: string) {
     if (!uuidValidate(userId)) {
-      throw new HttpException('userId is invalid (not uuid)', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'userId is invalid (not uuid)',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const storage = await this.storage.getStorage();
 
     if (!storage.users.find(({ id }) => id === userId)) {
-      throw new HttpException("user doesn't exist", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "record with userId doesn't exist",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const users = storage.users.filter(({ id }) => id !== userId);
 
-    await this.storage.updateStorage(users);
+    await this.storage.updateStorage({ ...storage, users });
   }
 
   getResponseUser(user: UserDto): UserResponseDto {
