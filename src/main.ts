@@ -7,7 +7,7 @@ import { serve, setup } from 'swagger-ui-express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port = process.env.PORT || 8000;
+  const port = process.env.PORT || 4000;
 
   const file = readFileSync('./doc/api.yaml', 'utf8');
   const swaggerDocument = parse(file);
