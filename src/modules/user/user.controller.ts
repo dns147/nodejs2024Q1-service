@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -49,7 +50,7 @@ export class UserController {
   }
 
   @Post()
-  @HttpCode(201)
+  @HttpCode(HttpStatus.CREATED)
   async createUser(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.createUser(createUserDto);
 
@@ -69,7 +70,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteUser(@Param('id') id: string) {
     await this.userService.deleteUser(id);
   }

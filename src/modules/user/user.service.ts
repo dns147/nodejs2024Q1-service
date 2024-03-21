@@ -1,18 +1,17 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import {
   CreateUserDto,
   UpdatePasswordDto,
   UserDto,
   UserResponseDto,
 } from './dto/user.dto';
-import { DBStorage } from 'src/db/dataBase';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
 import { getTimestamp } from 'src/helpers/utils';
-import { MEMORY_STORAGE } from 'src/helpers/consts';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class UserService {
-  constructor(@Inject(MEMORY_STORAGE) private readonly storage: DBStorage) {}
+  constructor(private prisma: PrismaService) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<UserDto> {
     const { login, password } = createUserDto;
@@ -39,19 +38,15 @@ export class UserService {
       updatedAt: timestamp,
     };
 
-    const storage = await this.storage.getStorage();
-    const users: UserDto[] = storage.users;
-    users.push(newUser);
-
-    await this.storage.updateStorage({ ...storage, users });
+    await this.prisma.user.create({ data: newUser });
 
     return newUser;
   }
 
   async getAllUsers(): Promise<UserDto[]> {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.user.findMany();
 
-    return storage.users;
+    return storage;
   }
 
   async getUserById(userId: string): Promise<UserDto | undefined> {
@@ -62,8 +57,8 @@ export class UserService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const userById = storage.users.find(({ id }) => id === userId);
+    const storage = await this.prisma.user.findMany();
+    const userById = storage.find(({ id }) => id === userId);
 
     if (!userById) {
       throw new HttpException("user doesn't exist", HttpStatus.NOT_FOUND);
@@ -100,22 +95,16 @@ export class UserService {
       throw new HttpException('oldPassword is wrong', HttpStatus.FORBIDDEN);
     }
 
-    const storage = await this.storage.getStorage();
+    const userUpdate = {
+      password: newPassword,
+      updatedAt: getTimestamp(),
+      version: user.version + 1,
+    };
 
-    const users = storage.users.map((user) => {
-      if (user.id === userId) {
-        return {
-          ...user,
-          password: newPassword,
-          updatedAt: getTimestamp(),
-          version: user.version + 1,
-        };
-      } else {
-        return user;
-      }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: userUpdate,
     });
-
-    await this.storage.updateStorage({ ...storage, users });
   }
 
   async deleteUser(userId: string) {
@@ -126,18 +115,16 @@ export class UserService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.user.findMany();
 
-    if (!storage.users.find(({ id }) => id === userId)) {
+    if (!storage.find(({ id }) => id === userId)) {
       throw new HttpException(
         "record with userId doesn't exist",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    const users = storage.users.filter(({ id }) => id !== userId);
-
-    await this.storage.updateStorage({ ...storage, users });
+    await this.prisma.user.delete({ where: { id: userId }});
   }
 
   getResponseUser(user: UserDto): UserResponseDto {
