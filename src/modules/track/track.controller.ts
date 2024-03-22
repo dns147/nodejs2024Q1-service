@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -30,7 +31,7 @@ export class TrackController {
   }
 
   @Post()
-  @HttpCode(201)
+  @HttpCode(HttpStatus.CREATED)
   async createTrack(@Body() createTrackDto: CreateTrackDto): Promise<TrackDto> {
     const track = await this.trackService.createTrack(createTrackDto);
 
@@ -50,7 +51,7 @@ export class TrackController {
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteTrack(@Param('id') id: string) {
     await this.trackService.deleteTrack(id);
   }

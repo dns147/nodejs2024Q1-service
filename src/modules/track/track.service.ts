@@ -1,17 +1,16 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateTrackDto, TrackDto, UpdateTrackDto } from './dto/track.dto';
-import { DBStorage } from 'src/db/dataBase';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
-import { MEMORY_STORAGE } from 'src/helpers/consts';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TrackService {
-  constructor(@Inject(MEMORY_STORAGE) private readonly storage: DBStorage) {}
+  constructor(private prisma: PrismaService) {}
 
   async getAllTracks(): Promise<TrackDto[]> {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.track.findMany();
 
-    return storage.tracks;
+    return storage;
   }
 
   async getTrackById(trackId: string): Promise<TrackDto | undefined> {
@@ -22,8 +21,8 @@ export class TrackService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const trackById = storage.tracks.find(({ id }) => id === trackId);
+    const storage = await this.prisma.track.findMany();
+    const trackById = storage.find(({ id }) => id === trackId);
 
     if (!trackById) {
       throw new HttpException("track doesn't exist", HttpStatus.NOT_FOUND);
@@ -55,11 +54,7 @@ export class TrackService {
       duration: duration,
     };
 
-    const storage = await this.storage.getStorage();
-    const tracks: TrackDto[] = storage.tracks;
-    tracks.push(newTrack);
-
-    await this.storage.updateStorage({ ...storage, tracks });
+    await this.prisma.track.create({ data: newTrack });
 
     return newTrack;
   }
@@ -72,7 +67,7 @@ export class TrackService {
       );
     }
 
-    const { name, duration } = updateTrackDto;
+    const { name, duration,  } = updateTrackDto;
 
     if (
       !name ||
@@ -85,22 +80,16 @@ export class TrackService {
         HttpStatus.BAD_REQUEST,
       );
     }
+ 
+    const trackUpdate = {
+      name: name,
+      duration: duration,
+    };
 
-    const storage = await this.storage.getStorage();
-
-    const tracks = storage.tracks.map((track) => {
-      if (track.id === trackId) {
-        return {
-          ...track,
-          name: name,
-          duration: duration,
-        };
-      } else {
-        return track;
-      }
+    await this.prisma.track.update({
+      where: { id: trackId },
+      data: trackUpdate,
     });
-
-    await this.storage.updateStorage({ ...storage, tracks });
   }
 
   async deleteTrack(trackId: string) {
@@ -111,24 +100,23 @@ export class TrackService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.track.findMany();
 
-    if (!storage.tracks.find(({ id }) => id === trackId)) {
+
+    if (!storage.find(({ id }) => id === trackId)) {
       throw new HttpException(
         "record with trackId doesn't exist",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    const tracks = storage.tracks.filter(({ id }) => id !== trackId);
-
-    await this.storage.updateStorage({ ...storage, tracks });
+    await this.prisma.track.delete({ where: { id: trackId }});
   }
 
   async deleteAlbumFromTracks(albumId: string) {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.track.findMany();
 
-    const tracks = storage.tracks.map((track) => {
+    const tracks = storage.map((track) => {
       if (track.albumId === albumId) {
         track.albumId = null;
       }
@@ -136,13 +124,16 @@ export class TrackService {
       return track;
     });
 
-    await this.storage.updateStorage({ ...storage, tracks });
+    await this.prisma.track.update({
+      where: { id: albumId },
+      data: tracks[0],
+    });
   }
 
   async deleteArtistFromTracks(artistId: string) {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.track.findMany();
 
-    const tracks = storage.tracks.map((track) => {
+    const tracks = storage.map((track) => {
       if (track.artistId === artistId) {
         track.artistId = null;
       }
@@ -150,6 +141,9 @@ export class TrackService {
       return track;
     });
 
-    await this.storage.updateStorage({ ...storage, tracks });
+    await this.prisma.track.update({
+      where: { id: artistId },
+      data: tracks[0],
+    });
   }
 }
