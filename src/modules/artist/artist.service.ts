@@ -1,23 +1,22 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ArtistDto, CreateArtistDto, UpdateArtistDto } from './dto/artist.dto';
-import { DBStorage } from 'src/db/dataBase';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
-import { MEMORY_STORAGE } from 'src/helpers/consts';
 import { TrackService } from '../track/track.service';
 import { AlbumService } from '../album/album.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ArtistService {
   constructor(
     private readonly trackService: TrackService,
     private readonly albumService: AlbumService,
-    @Inject(MEMORY_STORAGE) private readonly storage: DBStorage,
+    private prisma: PrismaService,
   ) {}
 
   async getAllArtists(): Promise<ArtistDto[]> {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.artist.findMany();
 
-    return storage.artists;
+    return storage;
   }
 
   async getArtistById(artistId: string): Promise<ArtistDto | undefined> {
@@ -28,8 +27,8 @@ export class ArtistService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const artistById = storage.artists.find(({ id }) => id === artistId);
+    const storage = await this.prisma.artist.findMany();
+    const artistById = storage.find(({ id }) => id === artistId);
 
     if (!artistById) {
       throw new HttpException("artist doesn't exist", HttpStatus.NOT_FOUND);
@@ -59,11 +58,7 @@ export class ArtistService {
       grammy: grammy,
     };
 
-    const storage = await this.storage.getStorage();
-    const artists: ArtistDto[] = storage.artists;
-    artists.push(newArtist);
-
-    await this.storage.updateStorage({ ...storage, artists });
+    await this.prisma.artist.create({ data: newArtist });
 
     return newArtist;
   }
@@ -79,8 +74,8 @@ export class ArtistService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const artistById = storage.artists.find(({ id }) => id === artistId);
+    const storage = await this.prisma.artist.findMany();
+    const artistById = storage.find(({ id }) => id === artistId);
 
     if (!artistById) {
       throw new HttpException("artist doesn't exist", HttpStatus.NOT_FOUND);
@@ -97,7 +92,7 @@ export class ArtistService {
 
     let updatedArtists: ArtistDto;
 
-    const artists = storage.artists.map((artist) => {
+    const artists = storage.map((artist) => {
       if (artist.id === artistId) {
         updatedArtists = {
           ...artist,
@@ -111,7 +106,10 @@ export class ArtistService {
       return artist;
     });
 
-    await this.storage.updateStorage({ ...storage, artists });
+    await this.prisma.artist.update({
+      where: { id: artistId },
+      data: artists,
+    });
 
     return updatedArtists;
   }
@@ -124,18 +122,16 @@ export class ArtistService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.artist.findMany();
 
-    if (!storage.artists.find(({ id }) => id === artistId)) {
+    if (!storage.find(({ id }) => id === artistId)) {
       throw new HttpException(
         "record with artistId doesn't exist",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    const artists = storage.artists.filter(({ id }) => id !== artistId);
-
-    await this.storage.updateStorage({ ...storage, artists });
+    await this.prisma.artist.delete({ where: { id: artistId }});
 
     await this.trackService.deleteArtistFromTracks(artistId);
     await this.albumService.deleteArtistFromAlbums(artistId);
