@@ -1,21 +1,20 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AlbumDto, CreateAlbumDto, UpdateAlbumDto } from './dto/album.dto';
-import { DBStorage } from 'src/db/dataBase';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
-import { MEMORY_STORAGE } from 'src/helpers/consts';
 import { TrackService } from '../track/track.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AlbumService {
   constructor(
     private readonly trackService: TrackService,
-    @Inject(MEMORY_STORAGE) private readonly storage: DBStorage,
+    private prisma: PrismaService,
   ) {}
 
   async getAllAlbums(): Promise<AlbumDto[]> {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.album.findMany();
 
-    return storage.albums;
+    return storage;
   }
 
   async getAlbumById(albumId: string): Promise<AlbumDto | undefined> {
@@ -26,8 +25,8 @@ export class AlbumService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const albumById = storage.albums.find(({ id }) => id === albumId);
+    const storage = await this.prisma.album.findMany();
+    const albumById = storage.find(({ id }) => id === albumId);
 
     if (!albumById) {
       throw new HttpException("album doesn't exist", HttpStatus.NOT_FOUND);
@@ -58,11 +57,7 @@ export class AlbumService {
       artistId: artistId,
     };
 
-    const storage = await this.storage.getStorage();
-    const albums: AlbumDto[] = storage.albums;
-    albums.push(newAlbum);
-
-    await this.storage.updateStorage({ ...storage, albums });
+    await this.prisma.album.create({ data: newAlbum });
 
     return newAlbum;
   }
@@ -78,8 +73,8 @@ export class AlbumService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const albumById = storage.albums.find(({ id }) => id === albumId);
+    const storage = await this.prisma.album.findMany();
+    const albumById = storage.find(({ id }) => id === albumId);
 
     if (!albumById) {
       throw new HttpException("album doesn't exist", HttpStatus.NOT_FOUND);
@@ -101,7 +96,7 @@ export class AlbumService {
 
     let updatedAlbum: AlbumDto;
 
-    const albums = storage.albums.map((album) => {
+    const albums = storage.map((album) => {
       if (album.id === albumId) {
         updatedAlbum = {
           ...album,
@@ -116,7 +111,10 @@ export class AlbumService {
       return album;
     });
 
-    await this.storage.updateStorage({ ...storage, albums });
+    await this.prisma.album.update({
+      where: { id: albumId },
+      data: albums[0],
+    });
 
     return updatedAlbum;
   }
@@ -129,26 +127,24 @@ export class AlbumService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.album.findMany();
 
-    if (!storage.albums.find(({ id }) => id === albumId)) {
+    if (!storage.find(({ id }) => id === albumId)) {
       throw new HttpException(
         "record with albumId doesn't exist",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    const albums = storage.albums.filter(({ id }) => id !== albumId);
-
-    await this.storage.updateStorage({ ...storage, albums });
+    await this.prisma.album.delete({ where: { id: albumId }});
 
     await this.trackService.deleteAlbumFromTracks(albumId);
   }
 
   async deleteArtistFromAlbums(artistId: string) {
-    const storage = await this.storage.getStorage();
+    const storage = await this.prisma.album.findMany();
 
-    const albums = storage.albums.map((album) => {
+    const albums = storage.map((album) => {
       if (album.artistId === artistId) {
         album.artistId = null;
       }
@@ -156,6 +152,9 @@ export class AlbumService {
       return album;
     });
 
-    await this.storage.updateStorage({ ...storage, albums });
+    await this.prisma.album.update({
+      where: { id: artistId },
+      data: albums[0],
+    });
   }
 }
