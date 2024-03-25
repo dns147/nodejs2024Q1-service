@@ -1,37 +1,53 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { FavoriteDto, FavoritesResponse } from './dto/favorite.dto';
-import { DBStorage } from 'src/db/dataBase';
-import { validate as uuidValidate } from 'uuid';
-import { MEMORY_STORAGE } from 'src/helpers/consts';
-import { TrackService } from '../track/track.service';
-import { AlbumService } from '../album/album.service';
-import { ArtistService } from '../artist/artist.service';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { FavoritesResponse } from './dto/favorite.dto';
+import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
 import { ArtistDto } from '../artist/dto/artist.dto';
 import { AlbumDto } from '../album/dto/album.dto';
 import { TrackDto } from '../track/dto/track.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FavoriteService {
-  constructor(
-    private readonly trackService: TrackService,
-    private readonly albumService: AlbumService,
-    private readonly artistService: ArtistService,
-    @Inject(MEMORY_STORAGE) private readonly storage: DBStorage,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async getAllFavorites(): Promise<FavoritesResponse> {
-    const storage = await this.storage.getStorage();
+    const storageArtists = await this.prisma.favorites.findMany({
+      where: { type: 'artist' },
+    });
 
-    const artists: ArtistDto[] = (
-      await this.artistService.getAllArtists()
-    ).filter(({ id }) => storage.favorites.artists.includes(id));
-
-    const albums: AlbumDto[] = (await this.albumService.getAllAlbums()).filter(
-      ({ id }) => storage.favorites.albums.includes(id),
+    const artists: ArtistDto[] = await Promise.all(
+      storageArtists.map(
+        async ({ dataId }) =>
+          await this.prisma.artist.findUnique({
+            where: { id: dataId },
+          }),
+      ),
     );
 
-    const tracks: TrackDto[] = (await this.trackService.getAllTracks()).filter(
-      ({ id }) => storage.favorites.tracks.includes(id),
+    const storageAlbums = await this.prisma.favorites.findMany({
+      where: { type: 'album' },
+    });
+
+    const albums: AlbumDto[] = await Promise.all(
+      storageAlbums.map(
+        async ({ dataId }) =>
+          await this.prisma.album.findUnique({
+            where: { id: dataId },
+          }),
+      ),
+    );
+
+    const storageTracks = await this.prisma.favorites.findMany({
+      where: { type: 'track' },
+    });
+
+    const tracks: TrackDto[] = await Promise.all(
+      storageTracks.map(
+        async ({ dataId }) =>
+          await this.prisma.track.findUnique({
+            where: { id: dataId },
+          }),
+      ),
     );
 
     return { artists, albums, tracks };
@@ -45,8 +61,8 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const trackById = storage.tracks.find(({ id }) => id === trackId);
+    const storage = await this.prisma.track.findMany();
+    const trackById = storage.find(({ id }) => id === trackId);
 
     if (!trackById) {
       throw new HttpException(
@@ -55,10 +71,19 @@ export class FavoriteService {
       );
     }
 
-    const favorites: FavoriteDto = storage.favorites;
-    favorites.tracks.push(trackId);
+    const favorite = await this.prisma.favorites.findFirst({
+      where: { dataId: trackId },
+    });
 
-    await this.storage.updateStorage({ ...storage, favorites });
+    if (favorite === null) {
+      const params = {
+        id: uuidv4(),
+        type: 'track',
+        dataId: trackId,
+      };
+
+      await this.prisma.favorites.create({ data: params });
+    }
   }
 
   async deleteTrackFromFavorites(trackId: string) {
@@ -69,20 +94,25 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const favorite = await this.prisma.favorites.findFirst({
+      where: {
+        type: 'track',
+        dataId: trackId,
+      },
+    });
 
-    if (!storage.tracks.find(({ id }) => id === trackId)) {
+    if (!favorite) {
       throw new HttpException(
         "record with trackId doesn't exist",
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
 
-    const tracks = storage.favorites.tracks.filter((id) => id !== trackId);
-
-    await this.storage.updateStorage({
-      ...storage,
-      favorites: { ...storage.favorites, tracks },
+    await this.prisma.favorites.deleteMany({
+      where: {
+        type: 'track',
+        dataId: trackId,
+      },
     });
   }
 
@@ -94,8 +124,8 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const albumById = storage.albums.find(({ id }) => id === albumId);
+    const storage = await this.prisma.album.findMany();
+    const albumById = storage.find(({ id }) => id === albumId);
 
     if (!albumById) {
       throw new HttpException(
@@ -104,10 +134,19 @@ export class FavoriteService {
       );
     }
 
-    const favorites: FavoriteDto = storage.favorites;
-    favorites.albums.push(albumId);
+    const favorite = await this.prisma.favorites.findFirst({
+      where: { dataId: albumId },
+    });
 
-    await this.storage.updateStorage({ ...storage, favorites });
+    if (favorite === null) {
+      const params = {
+        id: uuidv4(),
+        type: 'album',
+        dataId: albumId,
+      };
+
+      await this.prisma.favorites.create({ data: params });
+    }
   }
 
   async deleteAlbumFromFavorites(albumId: string) {
@@ -118,20 +157,25 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const favorite = await this.prisma.favorites.findFirst({
+      where: {
+        type: 'album',
+        dataId: albumId,
+      },
+    });
 
-    if (!storage.albums.find(({ id }) => id === albumId)) {
+    if (!favorite) {
       throw new HttpException(
         "record with albumId doesn't exist",
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
 
-    const albums = storage.favorites.albums.filter((id) => id !== albumId);
-
-    await this.storage.updateStorage({
-      ...storage,
-      favorites: { ...storage.favorites, albums },
+    await this.prisma.favorites.deleteMany({
+      where: {
+        type: 'album',
+        dataId: albumId,
+      },
     });
   }
 
@@ -143,8 +187,8 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
-    const artistById = storage.artists.find(({ id }) => id === artistId);
+    const storage = await this.prisma.artist.findMany();
+    const artistById = storage.find(({ id }) => id === artistId);
 
     if (!artistById) {
       throw new HttpException(
@@ -153,10 +197,19 @@ export class FavoriteService {
       );
     }
 
-    const favorites: FavoriteDto = storage.favorites;
-    favorites.artists.push(artistId);
+    const favorite = await this.prisma.favorites.findFirst({
+      where: { dataId: artistId },
+    });
 
-    await this.storage.updateStorage({ ...storage, favorites });
+    if (favorite === null) {
+      const params = {
+        id: uuidv4(),
+        type: 'artist',
+        dataId: artistId,
+      };
+
+      await this.prisma.favorites.create({ data: params });
+    }
   }
 
   async deleteArtistFromFavorites(artistId: string) {
@@ -167,20 +220,25 @@ export class FavoriteService {
       );
     }
 
-    const storage = await this.storage.getStorage();
+    const favorite = await this.prisma.favorites.findFirst({
+      where: {
+        type: 'artist',
+        dataId: artistId,
+      },
+    });
 
-    if (!storage.artists.find(({ id }) => id === artistId)) {
+    if (!favorite) {
       throw new HttpException(
         "record with artistId doesn't exist",
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
 
-    const artists = storage.favorites.artists.filter((id) => id !== artistId);
-
-    await this.storage.updateStorage({
-      ...storage,
-      favorites: { ...storage.favorites, artists },
+    await this.prisma.favorites.deleteMany({
+      where: {
+        type: 'artist',
+        dataId: artistId,
+      },
     });
   }
 }

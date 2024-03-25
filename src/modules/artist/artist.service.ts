@@ -131,7 +131,7 @@ export class ArtistService {
       );
     }
 
-    await this.prisma.artist.delete({ where: { id: artistId }});
+    await this.prisma.artist.delete({ where: { id: artistId } });
 
     await this.trackService.deleteArtistFromTracks(artistId);
     await this.albumService.deleteArtistFromAlbums(artistId);

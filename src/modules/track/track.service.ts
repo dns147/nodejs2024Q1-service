@@ -67,7 +67,7 @@ export class TrackService {
       );
     }
 
-    const { name, duration,  } = updateTrackDto;
+    const { name, duration } = updateTrackDto;
 
     if (
       !name ||
@@ -80,7 +80,7 @@ export class TrackService {
         HttpStatus.BAD_REQUEST,
       );
     }
- 
+
     const trackUpdate = {
       name: name,
       duration: duration,
@@ -102,7 +102,6 @@ export class TrackService {
 
     const storage = await this.prisma.track.findMany();
 
-
     if (!storage.find(({ id }) => id === trackId)) {
       throw new HttpException(
         "record with trackId doesn't exist",
@@ -110,7 +109,7 @@ export class TrackService {
       );
     }
 
-    await this.prisma.track.delete({ where: { id: trackId }});
+    await this.prisma.track.delete({ where: { id: trackId } });
   }
 
   async deleteAlbumFromTracks(albumId: string) {

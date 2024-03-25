@@ -136,7 +136,7 @@ export class AlbumService {
       );
     }
 
-    await this.prisma.album.delete({ where: { id: albumId }});
+    await this.prisma.album.delete({ where: { id: albumId } });
 
     await this.trackService.deleteAlbumFromTracks(albumId);
   }

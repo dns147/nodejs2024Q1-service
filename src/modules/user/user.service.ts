@@ -124,7 +124,7 @@ export class UserService {
       );
     }
 
-    await this.prisma.user.delete({ where: { id: userId }});
+    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   getResponseUser(user: UserDto): UserResponseDto {
