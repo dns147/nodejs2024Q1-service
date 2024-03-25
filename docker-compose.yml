@@ -1,13 +1,23 @@
+version: '3.8'
+
 services:
   webapp:
-    # image: webapp
+    image: webapp
+    container_name: home_library_service
     build:
       context: .
       dockerfile: Dockerfile
+    restart: always
     ports:
       - "4000:4000"
-    # volumes:
-    #   - "/data"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./src:/app/src/
+    depends_on:
+      - postgres
+    networks:
+      - postgres
+  
   postgres:
     image: postgres
     restart: always
@@ -18,5 +28,14 @@ services:
       - postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - postgres
+
+networks:
+  postgres:
+    driver: bridge
+
 volumes:
   postgres:
+  logs:
+  node-modules:
